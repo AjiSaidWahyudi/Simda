@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
+import 'package:simda_mobile/screens/auth/login_screen.dart';
+import 'package:simda_mobile/screens/dashboard_screen.dart';
 import 'package:simda_mobile/theme/app_colors.dart';
 import '../providers/auth_provider.dart';
 
@@ -13,9 +15,24 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   @override
+  @override
   void initState() {
     super.initState();
-    Timer(const Duration(seconds: 1), _checkAuth);
+    Future.delayed(const Duration(milliseconds: 500), () {
+      final auth = context.read<AuthProvider>();
+
+      if (auth.isAuthenticated) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
+    });
   }
 
   void _checkAuth() {

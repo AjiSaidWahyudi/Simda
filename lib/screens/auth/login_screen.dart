@@ -21,6 +21,14 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
 
   Future<void> _submit() async {
+    if (_usernameCtrl.text.trim().isEmpty ||
+        _passwordCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Username dan password wajib diisi')),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -35,9 +43,11 @@ class _LoginScreenState extends State<LoginScreen> {
     if (ok) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => const MainScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Username atau password salah')),
       );
     }
   }

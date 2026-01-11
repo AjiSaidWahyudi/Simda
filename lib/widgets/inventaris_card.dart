@@ -5,7 +5,6 @@ import 'package:simda_mobile/theme/app_colors.dart';
 
 class InventarisCardScreen extends StatelessWidget {
   final InventarisSearch item;
-
   const InventarisCardScreen({super.key, required this.item});
 
   @override
@@ -20,76 +19,22 @@ class InventarisCardScreen extends StatelessWidget {
           ),
         );
       },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ICON KIRI
-            Container(
-              width: 56,
-              height: 56,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: AppColors.blue600.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: _buildImage(item.imageUrl),
-            ),
-
-            const SizedBox(width: 14),
-
-            // TEXT
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.jenisBarang,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.ruangan,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // CHIP
-                  Row(
-                    children: [
-                      _ChipLabel(
-                        text: item.keadaan,
-                        color: _keadaanColor(item.keadaan),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const Icon(
-              Icons.chevron_right,
-              color: Colors.grey,
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item.jenisBarang,
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 6),
+              Text(item.ruangan),
+            ],
+          ),
         ),
       ),
     );

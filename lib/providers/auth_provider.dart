@@ -58,13 +58,19 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    final oldToken = _token;
+
     _token = '';
     _user = null;
 
     final sp = await SharedPreferences.getInstance();
-    await sp.remove('token');
-    await sp.remove('user');
+    await sp.clear();
 
     notifyListeners();
+
+    // call API logout (best effort)
+    if (oldToken.isNotEmpty) {
+      await ApiService.logout(oldToken);
+    }
   }
 }

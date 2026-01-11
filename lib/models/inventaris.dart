@@ -7,6 +7,7 @@ class Inventaris {
   final String kodeBarang;
   final String kodeRegister;
   final String jenisBarang;
+  final String namaPemegang;
   final String merekTipe;
   final String noSeri;
   final String bahan;
@@ -27,6 +28,7 @@ class Inventaris {
     required this.kodeBarang,
     required this.kodeRegister,
     required this.jenisBarang,
+    required this.namaPemegang,
     required this.merekTipe,
     required this.noSeri,
     required this.bahan,
@@ -49,6 +51,7 @@ class Inventaris {
       kodeBarang: json['kode_barang'] ?? '-',
       kodeRegister: json['kode_register'] ?? '-',
       jenisBarang: json['jenis_barang'] ?? '-',
+      namaPemegang: json['nama_pemegang'] ?? '-',
       merekTipe: json['merek_tipe'] ?? '-',
       noSeri: json['no_seri'] ?? '-',
       bahan: json['bahan'] ?? '-',
@@ -60,7 +63,7 @@ class Inventaris {
       jumlah: json['jumlah'] ?? '-',
       harga: json['harga'] ?? '-',
       keterangan: json['keterangan'] ?? '-',
-      images: (json['gambar_inv'] as List? ?? [])
+      images: (json['gambar'] as List? ?? [])
           .map((e) => InventarisImage.fromJson(e))
           .toList(),
     );

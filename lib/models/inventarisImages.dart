@@ -19,5 +19,5 @@ class InventarisImage {
     );
   }
 
-  String get url => '$BASE_URL/api/gambar_barang/$invId/$gambar';
+  String get url => '$BASE_URL/gambar_barang/$invId/$gambar';
 }

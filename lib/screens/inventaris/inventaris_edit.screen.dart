@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:simda_mobile/models/inventarisImages.dart';
 import 'package:simda_mobile/services/api_services.dart';
 import 'package:simda_mobile/widgets/dropdown_field.dart';
-import 'package:simda_mobile/widgets/image_picker_field.dart';
 import 'package:simda_mobile/widgets/primary_button.dart';
 import '../../models/inventaris.dart';
 import '../../providers/auth_provider.dart';
@@ -22,9 +22,12 @@ class InventarisEditScreen extends StatefulWidget {
 
 class _InventarisEditScreenState extends State<InventarisEditScreen> {
   int? _selectedKartuRuang;
-  List<File> _newImages = [];
   bool _loading = false;
   List<dynamic> _kartuRuangList = [];
+
+  List<InventarisImage> _existingImages = [];
+  List<File> _newImages = [];
+  List<int> _deletedImageIds = [];
 
   @override
   void initState() {
@@ -33,6 +36,7 @@ class _InventarisEditScreenState extends State<InventarisEditScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchKartuRuang();
     });
+    _existingImages = List.from(widget.item.images);
   }
 
   Future<void> _fetchKartuRuang() async {
@@ -51,33 +55,85 @@ class _InventarisEditScreenState extends State<InventarisEditScreen> {
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _showImageSourcePicker() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Kamera'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickFromCamera();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Galeri'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickFromGallery();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickFromCamera() async {
+    if ((_existingImages.length + _newImages.length) >= 4) {
+      _showLimitWarning();
+      return;
+    }
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
+
+    if (picked == null) return;
+
+    final original = File(picked.path);
+    final compressed = await compressImage(original);
+
+    setState(() {
+      _newImages.add(compressed ?? original);
+    });
+  }
+
+  Future<void> _pickFromGallery() async {
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultiImage(imageQuality: 85);
 
     if (pickedFiles.isEmpty) return;
 
-    // jumlah gambar lama dari API
-    final existingCount = widget.item.images.length;
-
-    if (existingCount + _newImages.length + pickedFiles.length > 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maksimal 4 gambar per inventaris')),
-      );
+    if (_existingImages.length + _newImages.length + pickedFiles.length > 4) {
+      _showLimitWarning();
       return;
     }
-
-    List<File> newFiles = [];
 
     for (final picked in pickedFiles) {
       final original = File(picked.path);
       final compressed = await compressImage(original);
-      newFiles.add(compressed ?? original);
+      _newImages.add(compressed ?? original);
     }
 
-    setState(() {
-      _newImages.addAll(newFiles);
-    });
+    setState(() {});
+  }
+
+  void _showLimitWarning() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Maksimal 4 gambar')),
+    );
   }
 
   Future<File?> compressImage(File file) async {
@@ -97,52 +153,6 @@ class _InventarisEditScreenState extends State<InventarisEditScreen> {
     return result != null ? File(result.path) : null;
   }
 
-  Widget _buildImages() {
-    final existingImages = widget.item.images; // dari API
-    final totalCount = existingImages.length + _newImages.length;
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        // Gambar lama (network)
-        ...existingImages.map((img) {
-          return Image.network(
-            img.url,
-            width: 90,
-            height: 90,
-            fit: BoxFit.cover,
-          );
-        }),
-
-        // Gambar baru (local)
-        ..._newImages.map((file) {
-          return Image.file(
-            file,
-            width: 90,
-            height: 90,
-            fit: BoxFit.cover,
-          );
-        }),
-
-        // Tombol tambah (jika < 4)
-        if (totalCount < 4)
-          InkWell(
-            onTap: _pickImage,
-            child: Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(Icons.add_a_photo),
-            ),
-          ),
-      ],
-    );
-  }
-
   Future<void> _submit() async {
     setState(() => _loading = true);
 
@@ -156,7 +166,8 @@ class _InventarisEditScreenState extends State<InventarisEditScreen> {
       token: token,
       id: widget.item.id,
       fields: fields,
-      images: _newImages, // 🔥 LIST, BUKAN SINGLE
+      newImages: _newImages,
+      deletedImageIds: _deletedImageIds,
     );
 
     if (!mounted) return;
@@ -206,38 +217,87 @@ class _InventarisEditScreenState extends State<InventarisEditScreen> {
             // ============================
             // 🔽 GAMBAR
             // ============================
-            _buildImages(),
 
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 10,
+              runSpacing: 10,
               children: [
-                // gambar lama (dari API)
-                ...widget.item.images.map((img) => Stack(
-                      children: [
-                        Image.network(img.url,
-                            width: 90, height: 90, fit: BoxFit.cover),
-                        // nanti bisa ditambah tombol hapus
-                      ],
-                    )),
+                // ==========================
+                // GAMBAR LAMA (SERVER)
+                // ==========================
+                ..._existingImages.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final img = entry.value;
 
-                // gambar baru (local)
-                ..._newImages.map((file) => Image.file(
-                      file,
-                      width: 90,
-                      height: 90,
-                      fit: BoxFit.cover,
-                    )),
+                  return Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          img.url,
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: -6,
+                        right: -6,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _deletedImageIds.add(_existingImages[index].id);
+                              _existingImages.removeAt(index);
+                            });
+                          },
+                          child: _removeBtn(),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
 
-                if (widget.item.images.length + _newImages.length < 4)
-                  InkWell(
-                    onTap: _pickImage,
-                    child: Container(
-                      width: 90,
-                      height: 90,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.add_a_photo),
-                    ),
+                // ==========================
+                // GAMBAR BARU (LOKAL)
+                // ==========================
+                ..._newImages.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final img = entry.value;
+
+                  return Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.file(
+                          img,
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _newImages.removeAt(index);
+                            });
+                          },
+                          child: _removeBtn(),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+
+                // ==========================
+                // TOMBOL TAMBAH
+                // ==========================
+                if ((_existingImages.length + _newImages.length) < 4)
+                  GestureDetector(
+                    onTap: _loading ? null : _showImageSourcePicker,
+                    child: _addBox(),
                   ),
               ],
             ),
@@ -247,11 +307,33 @@ class _InventarisEditScreenState extends State<InventarisEditScreen> {
             PrimaryButton(
               text: 'SIMPAN',
               loading: _loading,
-              onPressed: _submit,
+              onPressed: _loading ? null : _submit,
             ),
           ],
         ),
       ),
     );
   }
+}
+
+Widget _removeBtn() {
+  return Container(
+    decoration: BoxDecoration(
+      color: Colors.black.withOpacity(0.7),
+      shape: BoxShape.circle,
+    ),
+    child: const Icon(Icons.close, size: 18, color: Colors.white),
+  );
+}
+
+Widget _addBox() {
+  return Container(
+    width: 90,
+    height: 90,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: Colors.grey.shade400),
+    ),
+    child: const Icon(Icons.add_a_photo_outlined),
+  );
 }

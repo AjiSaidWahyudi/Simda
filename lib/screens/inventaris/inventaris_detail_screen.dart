@@ -20,6 +20,76 @@ class InventarisDetailScreen extends StatefulWidget {
 class _InventarisDetailScreenState extends State<InventarisDetailScreen> {
   Inventaris? item;
   bool isLoading = true;
+  int _currentIndex = 0;
+
+  void _openImageViewer(int startIndex) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black,
+      builder: (_) {
+        int index = startIndex;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Stack(
+              children: [
+                PageView.builder(
+                  controller: PageController(initialPage: startIndex),
+                  itemCount: item!.images.length,
+                  onPageChanged: (i) {
+                    setModalState(() => index = i);
+                  },
+                  itemBuilder: (context, i) {
+                    return InteractiveViewer(
+                      child: Image.network(
+                        item!.images[i].url,
+                        fit: BoxFit.contain,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('IMAGE VIEWER ERROR: $error');
+                          return const Center(
+                            child: Icon(Icons.broken_image,
+                                color: Colors.white, size: 50),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+
+                // ❌ CLOSE BUTTON
+                Positioned(
+                  top: 40,
+                  right: 20,
+                  child: IconButton(
+                    icon:
+                        const Icon(Icons.close, color: Colors.white, size: 28),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+
+                // COUNTER (opsional)
+                Positioned(
+                  bottom: 30,
+                  left: 0,
+                  right: 0,
+                  child: Text(
+                    '${index + 1} / ${item!.images.length}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -86,10 +156,88 @@ class _InventarisDetailScreenState extends State<InventarisDetailScreen> {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      if (item!.imageUrl != null)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: Image.network(item!.imageUrl!),
+                      Builder(builder: (_) {
+                        debugPrint('IMAGE COUNT: ${item!.images.length}');
+                        for (final img in item!.images) {
+                          debugPrint('IMAGE URL: ${img.url}');
+                        }
+                        return const SizedBox.shrink();
+                      }),
+                      if (item!.images.isNotEmpty)
+                        Column(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: SizedBox(
+                                height: 220,
+                                child: PageView.builder(
+                                  itemCount: item!.images.length,
+                                  onPageChanged: (index) {
+                                    setState(() => _currentIndex = index);
+                                  },
+                                  itemBuilder: (context, index) {
+                                    final img = item!.images[index];
+
+                                    // 🔍 DEBUG URL GAMBAR
+                                    debugPrint('LOAD IMAGE: ${img.url}');
+
+                                    return GestureDetector(
+                                      onTap: () {
+                                        _openImageViewer(index);
+                                      },
+                                      child: Image.network(
+                                        img.url,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        loadingBuilder:
+                                            (context, child, progress) {
+                                          if (progress == null) return child;
+                                          return const Center(
+                                              child:
+                                                  CircularProgressIndicator());
+                                        },
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          debugPrint('IMAGE ERROR: $error');
+                                          return Container(
+                                            color: Colors.grey.shade200,
+                                            alignment: Alignment.center,
+                                            child: const Icon(
+                                                Icons.broken_image,
+                                                size: 40),
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // =====================
+                            // DOT INDICATOR
+                            // =====================
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(
+                                item!.images.length,
+                                (index) => Container(
+                                  width: 8,
+                                  height: 8,
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 4),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _currentIndex == index
+                                        ? Colors.blue
+                                        : Colors.grey.shade400,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       const SizedBox(height: 20),
                       _info('Ruangan', item!.ruangan),

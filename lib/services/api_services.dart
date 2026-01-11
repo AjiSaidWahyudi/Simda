@@ -29,6 +29,15 @@ class ApiService {
     return resp;
   }
 
+  static Future<http.Response> logout(String token) {
+    return http.post(
+      Uri.parse('$BASE_URL/api/logout'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+  }
+
   static Future<Map<String, dynamic>> getTotal(String token) async {
     final res = await http.get(
       Uri.parse('$BASE_URL/api/get_total'),
@@ -113,7 +122,6 @@ class ApiService {
       );
       request.files.add(multipartFile);
     }
-
     return await request.send();
   }
 
@@ -141,21 +149,29 @@ class ApiService {
     required String token,
     required int id,
     required Map<String, String> fields,
-    required List<File> images,
+    required List<File> newImages,
+    required List<int> deletedImageIds,
   }) async {
-    final uri = Uri.parse('$BASE_URL/api/inventarisasi/$id');
+    final uri = Uri.parse('$BASE_URL/api/inventarisasi/$id/update');
     final request = http.MultipartRequest('POST', uri);
 
     request.headers.addAll(jsonHeader(token));
     request.fields['_method'] = 'PUT';
     request.fields.addAll(fields);
 
-    for (final image in images) {
-      final file = await http.MultipartFile.fromPath(
-        'gambar[]', // 🔥 HARUS array
-        image.path,
+    // 🗑️ gambar lama yang dihapus
+    for (final id in deletedImageIds) {
+      request.fields['deleted_images[]'] = id.toString();
+    }
+
+    // 🖼️ gambar baru
+    for (final image in newImages) {
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'gambar[]',
+          image.path,
+        ),
       );
-      request.files.add(file);
     }
 
     return await request.send();
